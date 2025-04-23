@@ -118,7 +118,6 @@ sub generateMQTT($$) {
 		
 		#%discoveryTopicsMQTT;
 		my $payload = {};
-		
 		foreach my $key (keys %$input) {
 			my $topic = "$baseTopic/$key";
 			if(!$fieldBlacklist{$key}) {
@@ -144,6 +143,7 @@ sub generateMQTT($$) {
 		if($inputType eq 'VT') {
 			$vRMS = $input->{Vrms};
 		} elsif($inputType eq 'CT') {
+			$payload->{Pf} *= 100; # fractional to percentage
 			my $amps;
 			#FIXME: do we even need this? it doesn't get stored in the DB
 			if( $input->{Pf} == 0 ) {
