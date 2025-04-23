@@ -80,6 +80,12 @@ sub getInputType($$) {
 	my $channel = $leaf->{channel};
 	return $units{$hostname}{config}{inputs}[$channel]{type};
 }
+sub isInputDoubled($$) {
+	my ($hostname, $leaf) = @_;
+	my $channel = $leaf->{channel};
+	return 0 unless exists $units{$hostname}{config}{inputs}[$channel]{double};
+	return $units{$hostname}{config}{inputs}[$channel]{double};
+}
 
 #FIXME: move this up
 my %HAunits = ( # Unit, Device Class, precision
@@ -93,30 +99,15 @@ my %fieldBlacklist = (
 	channel => 1, reversed => 1, phase => 1, lastphase => 1
 );
 
-sub generateMQTT($$) {
-	my ($hostname, $tree) = @_;
-	my $IWname = $units{$hostname}->{config}->{device}->{name};
-	foreach my $type (qw( stats wifi influx1 influx2 emoncms pvoutput )) {
-	#FIXME: just exclude inputs, outputs & datalogs? they're ARRAY not HASH
-		next unless ref $tree->{$type};
-		my $baseTopic = "iotawatt/$IWname/$type";
-		foreach my $key (keys %{$tree->{$type}}) {
-			my $topic = "$baseTopic/$key";
-			$mqtt->publish( topic => $topic, message => $tree->{$type}->{$key} );
-		}
-	}
-	my $inputs = $tree->{inputs};
+sub processInputs {
+	my ($hostname, $IWname, $inputs, $discoveryMQTT) = @_;
+
 	my $vRMS;
-	my $discoveryTopic = "homeassistant/device/iotawatt_${IWname}/config";
-	my $discoveryPayload = { device => {name => "IoTaWatt $IWname", identifiers => ["iwatt_$IWname"] } };
-	$discoveryPayload->{origin} = { name => 'iwMQTT' };
-	$discoveryPayload->{components} = {};
 	foreach my $input (@$inputs) {
 		my $channel = $input->{channel};
 		my $name = getInputName($hostname, $input);
 		my $baseTopic = "iotawatt/$IWname/inputs/$name";
 		
-		#%discoveryTopicsMQTT;
 		my $payload = {};
 		foreach my $key (keys %$input) {
 			my $topic = "$baseTopic/$key";
@@ -133,10 +124,8 @@ sub generateMQTT($$) {
 						$component->{suggested_display_precision} = $unit->[2];
 					}
 				}
-				$discoveryPayload->{components}->{$cmpName} = $component;
+				$discoveryMQTT->{components}->{$cmpName} = $component;
 			}
-			#say "$topic: $tree->{$type}->{$key}";
-			#$mqtt->publish( topic => $topic, message => $input->{$key} );
 			$payload->{$key} = $input->{$key} + 0;
 		}
 		my $inputType = getInputType($hostname, $input);
@@ -149,9 +138,9 @@ sub generateMQTT($$) {
 			if( $input->{Pf} == 0 ) {
 				$amps = 0;
 			} else {
-				$amps = $input->{Watts}/($input->{Pf}*$vRMS);
+				my $double = isInputDoubled($hostname, $input) ? 2 : 1;
+				$amps = $input->{Watts}/($input->{Pf}*($vRMS*$double));
 			}
-			#$mqtt->publish( topic => "$baseTopic/Amps", message => $amps );
 			$payload->{Amps} = $amps;
 			my $cmpName = "${IWname}_${name}_Amps";
 			my $component = { name => "${name}_Amps", state_topic => $baseTopic, platform => 'sensor' };
@@ -166,10 +155,31 @@ sub generateMQTT($$) {
 				}
 			}
 
-			$discoveryPayload->{components}->{$cmpName} = $component;
+			$discoveryMQTT->{components}->{$cmpName} = $component;
 		}
 		$mqtt->publish( topic => $baseTopic, message => $jsonCodec->encode($payload) );
 	}
+}
+sub generateMQTT($$) {
+	my ($hostname, $tree) = @_;
+	my $IWname = $units{$hostname}->{config}->{device}->{name};
+	foreach my $type (qw( stats wifi influx1 influx2 emoncms pvoutput )) {
+	#FIXME: just exclude inputs, outputs & datalogs? they're ARRAY not HASH
+		next unless ref $tree->{$type};
+		my $baseTopic = "iotawatt/$IWname/$type";
+		foreach my $key (keys %{$tree->{$type}}) {
+			my $topic = "$baseTopic/$key";
+			$mqtt->publish( topic => $topic, message => $tree->{$type}->{$key} );
+		}
+	}
+	my $inputs = $tree->{inputs};
+	my $discoveryTopic = "homeassistant/device/iotawatt_${IWname}/config";
+	my $discoveryPayload = { device => {name => "IoTaWatt $IWname", identifiers => ["iwatt_$IWname"] } };
+	$discoveryPayload->{origin} = { name => 'iwMQTT' };
+	$discoveryPayload->{components} = {};
+
+	processInputs($hostname, $IWname, $inputs, $discoveryPayload);
+
 	#print $jsonCodec->pretty->encode($discoveryPayload); exit;
 	if($discoveryTopicsMQTT{$discoveryTopic}++ == 0) { #yes, this is post-increment on purpose
 		$mqtt->publish( topic => $discoveryTopic, message => $jsonCodec->encode($discoveryPayload) );
