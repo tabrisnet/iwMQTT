@@ -99,7 +99,7 @@ my %fieldBlacklist = (
 	channel => 1, reversed => 1, phase => 1, lastphase => 1
 );
 
-sub processInputs {
+sub processInputs($$$$) {
 	my ($hostname, $IWname, $inputs, $discoveryMQTT) = @_;
 
 	my $vRMS;
@@ -160,6 +160,65 @@ sub processInputs {
 		$mqtt->publish( topic => $baseTopic, message => $jsonCodec->encode($payload) );
 	}
 }
+
+sub processOutputs($$$$) {
+	my ($hostname, $IWname, $outputs, $discoveryMQTT) = @_;
+
+	foreach my $output (@$outputs) {
+		my $name = $output->{name};
+		my $baseTopic = "iotawatt/$IWname/outputs/$name";
+
+		my $payload = $output;
+		my $component = { name => $name, state_topic => $baseTopic, platform => 'sensor' };
+		$component->{unique_id} = "iotawatt_${IWname}_${name}";
+		$component->{value_template} = "{{ value_json.value }}";
+		if(my $unit = $HAunits{"$output->{units}"}) {
+			$component->{unit_of_measurement} = $unit->[0];
+			$component->{device_class} = $unit->[1];
+			$component->{state_class} = 'measurement';
+			if(exists($unit->[2])) {
+				$component->{suggested_display_precision} = $unit->[2];
+			}
+		}
+		$discoveryMQTT->{components}->{"${IWname}_${name}"} = $component;
+		$mqtt->publish( topic => $baseTopic, message => $jsonCodec->encode($payload) );
+	}
+}
+
+our %statNames = (
+	cyclerate   => ['samples per cycle'],
+	chanrate    => ['cycles sampled/second'],
+	version     => ['firmware version'],
+	frequency   => ['line frequency', 'frequency'],
+	starttime   => ['startup time', 'timestamp'],
+	currenttime => ['current time', 'timestamp'],
+	runseconds  => ['runtime', 'duration', 's'],
+	stack       => ['free heap', 'data_size', 'B'],
+);
+sub processStats($$$$) {
+	my ($hostname, $IWname, $stats, $discoveryMQTT) = @_;
+
+	foreach my $name (keys %$stats) {
+		next unless exists $statNames{$name};
+		my $baseTopic = "iotawatt/$IWname/stats/$name";
+		my $component = { name => $statNames{$name}->[0], state_topic => $baseTopic, platform => 'sensor' };
+		$component->{unique_id} = "iotawatt_${IWname}_stats_${name}";
+
+		if((my $unit = $statNames{$name}) && exists $statNames{$name}->[1]) {
+			$component->{unit_of_measurement} = $unit->[2] if exists $unit->[2];
+			$component->{device_class} = $unit->[1];
+			$component->{state_class} = 'measurement';
+		}
+		if($name =~ /time$/) {
+			$component->{value_template} = "{{ as_datetime(value) }}";
+			delete $component->{state_class};
+		}
+
+		#print $jsonCodec->pretty->encode($component);
+		#$component->{value_template} = "{{ value }}";
+		$discoveryMQTT->{components}->{"${IWname}_${name}"} = $component;
+	}
+}
 sub generateMQTT($$) {
 	my ($hostname, $tree) = @_;
 	my $IWname = $units{$hostname}->{config}->{device}->{name};
@@ -179,6 +238,9 @@ sub generateMQTT($$) {
 	$discoveryPayload->{components} = {};
 
 	processInputs($hostname, $IWname, $inputs, $discoveryPayload);
+	processOutputs($hostname, $IWname, $tree->{outputs}, $discoveryPayload);
+	# this just does the discoveryMQTT part
+	processStats($hostname, $IWname, $tree->{stats}, $discoveryPayload);
 
 	#print $jsonCodec->pretty->encode($discoveryPayload); exit;
 	if($discoveryTopicsMQTT{$discoveryTopic}++ == 0) { #yes, this is post-increment on purpose
