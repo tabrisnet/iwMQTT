@@ -212,6 +212,8 @@ sub processStats($$$$) {
 		if($name =~ /time$/) {
 			$component->{value_template} = "{{ as_datetime(value) }}";
 			delete $component->{state_class};
+		} elsif($name =~ /rate$/) {
+			$component->{state_class} = 'measurement';
 		}
 
 		#print $jsonCodec->pretty->encode($component);
