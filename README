@@ -1,0 +1,22 @@
+Perl IoTaWatt to MQTT bridge
+
+
+
+package needs:
+Debian: libanyevent-http-perl
+Debian: libmodule-pluggable-perl
+Debian: libsub-name-perl
+Debian: libyaml-tiny-perl
+Debian: libjson-xs-perl
+
+alpine calls them:
+
+perl-anyevent-http
+perl-module-pluggable
+perl-sub-name
+perl-yaml-tiny - only used for the config file
+perl-json-xs
+
+contains:
+AnyEvent::MQTT 1.212810 as of 2025Apr22
+Net::MQTT 1.163170 as of 2025Apr22

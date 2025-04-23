@@ -1,0 +1,8 @@
+---
+iotawatts:
+  - iwbsmt.tabris.net
+update_interval: 5
+mqtt:
+  server: mqtt.tabris.net
+  username: mqttUser
+  password: randomgarbledygook
