@@ -221,6 +221,37 @@ sub processStats($$$$) {
 		$discoveryMQTT->{components}->{"${IWname}_${name}"} = $component;
 	}
 }
+
+sub processInfluxDB2($$$) {
+	my ($hostname, $IWname, $discoveryMQTT) = @_;
+
+	my $component = { name => 'InfluxDB2 last update', device_class => 'timestamp', platform => 'sensor', };
+	$component->{state_topic} = "iotawatt/$IWname/influx2/lastpost";
+	$component->{value_template} = "{{ as_datetime(value) }}";
+	$component->{unique_id} = "iotawatt_${IWname}_influx2_lastpost";
+	$discoveryMQTT->{components}->{"$IWname}_influx_lastpost"} = $component;
+
+	$component = { name => 'InfluxDB2 state', state_topic => "iotawatt/$IWname/influx2/status", platform => 'sensor', };
+	$component->{unique_id} = "iotawatt_${IWname}_influx2_status";
+	$discoveryMQTT->{components}->{"$IWname}_influx_status"} = $component;
+}
+
+sub processWiFi($$$) {
+	my ($hostname, $IWname, $discoveryMQTT) = @_;
+	foreach my $name (qw( SSID IP channel )) {
+		my $component = { name => "WiFI $name", platform => 'sensor', state_topic => "iotawatt/$IWname/wifi/$name" };
+		$component->{unique_id} = "iotawatt_${IWname}_wifi_${name}";
+		$discoveryMQTT->{components}->{"$IWname}_wifi_${name}"} = $component;
+	}
+	my $component = { name => 'WiFi Connect Time', device_class => 'timestamp', platform => 'sensor', unique_id => "iotawatt_${IWname}_wifi_connecttime" };
+	$component->{state_topic} = "iotawatt/$IWname/wifi/connecttime";
+	$component->{value_template} = "{{ as_datetime(value) }}";
+	$discoveryMQTT->{components}->{"$IWname}_wifi_connecttime"} = $component;
+
+	$component = { name => 'WiFi Connect RSSI', platform => 'sensor', state_topic => "iotawatt/$IWname/wifi/RSSI", unique_id => "iotawatt_${IWname}_wifi_rssi" };
+	$component->{state_class} = 'measurement';
+	$discoveryMQTT->{components}->{"$IWname}_wifi_rssi"} = $component;
+}
 sub generateMQTT($$) {
 	my ($hostname, $tree) = @_;
 	my $IWname = $units{$hostname}->{config}->{device}->{name};
@@ -240,9 +271,15 @@ sub generateMQTT($$) {
 	$discoveryPayload->{components} = {};
 
 	processInputs($hostname, $IWname, $inputs, $discoveryPayload);
-	processOutputs($hostname, $IWname, $tree->{outputs}, $discoveryPayload);
+	if(scalar @{$tree->{outputs}}) {
+		processOutputs($hostname, $IWname, $tree->{outputs}, $discoveryPayload);
+	}
 	# this just does the discoveryMQTT part
 	processStats($hostname, $IWname, $tree->{stats}, $discoveryPayload);
+	if((exists $tree->{influx2}) && ($tree->{influx2}->{status} ne 'not running')) {
+		processInfluxDB2($hostname, $IWname, $discoveryPayload);
+	}
+	processWiFi($hostname, $IWname, $discoveryPayload);
 
 	#print $jsonCodec->pretty->encode($discoveryPayload); exit;
 	if($discoveryTopicsMQTT{$discoveryTopic}++ == 0) { #yes, this is post-increment on purpose
