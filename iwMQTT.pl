@@ -234,6 +234,11 @@ sub processInfluxDB2($$$) {
 	$component = { name => 'InfluxDB2 state', state_topic => "iotawatt/$IWname/influx2/status", platform => 'sensor', };
 	$component->{unique_id} = "iotawatt_${IWname}_influx2_status";
 	$discoveryMQTT->{components}->{"$IWname}_influx_status"} = $component;
+
+	$component = { name => 'InfluxDB2 backlog', state_topic => "iotawatt/$IWname/influx2/backlog", platform => 'sensor', };
+	$component->{state_class} = 'measurement'; $component->{device_class} = 'duration'; $component->{unit_of_measurement} = 's';
+	$component->{unique_id} = "iotawatt_${IWname}_influx2_backlog";
+	$discoveryMQTT->{components}->{"$IWname}_influx_backlog"} = $component;
 }
 
 sub processWiFi($$$) {
@@ -264,6 +269,11 @@ sub generateMQTT($$) {
 			$mqtt->publish( topic => $topic, message => $tree->{$type}->{$key} );
 		}
 	}
+	if(exists($tree->{influx2}->{status}) && ($tree->{influx2}->{status} eq 'running')) {
+		my $influxBacklog = time() - $tree->{influx2}->{lastpost};
+		$mqtt->publish( topic => "iotawatt/$IWname/influx2/backlog", message => $influxBacklog );
+	}
+
 	my $inputs = $tree->{inputs};
 	my $discoveryTopic = "homeassistant/device/iotawatt_${IWname}/config";
 	my $discoveryPayload = { device => {name => "IoTaWatt $IWname", identifiers => ["iwatt_$IWname"] } };
