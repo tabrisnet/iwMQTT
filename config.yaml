@@ -1,0 +1,19 @@
+name: "IoTaWatt MQTT bridge"
+version: "1.0.0"
+slug: "iotawatt-mqtt"
+description: "Bridge for IoTaWatt devices into HA's MQTT"
+panel_icon: "mdi:mqtt"
+arch:
+  - amd64
+  - arm64
+init: false
+options:
+  mqtt_server: "mqtt.tabris.net"
+  mqtt_user: "ha_mqtt"
+  mqtt_password: "randomgarbledygook"
+  iotawatts: [ 'iwbsmt.tabris.net' ]
+schema:
+  mqtt_server: str
+  mqtt_username: str
+  mqtt_password: str
+  iotawatts: [ 'str' ]
