@@ -10,6 +10,7 @@ use YAML::Tiny;
 use AnyEvent::HTTP;
 
 our $configHash = YAML::Tiny->read('iotawatt_config.yaml');
+$configHash = $configHash->[0];
 
 BEGIN {
 	use Cwd qw( abs_path getcwd );
