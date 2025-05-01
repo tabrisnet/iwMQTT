@@ -9,7 +9,7 @@ use JSON::XS;
 use YAML::Tiny;
 use AnyEvent::HTTP;
 
-our $configHash = YAML::Tiny->read('config.yaml');
+our $configHash = YAML::Tiny->read('iotawatt_config.yaml');
 
 BEGIN {
 	use Cwd qw( abs_path getcwd );
