@@ -1,0 +1,10 @@
+---
+iotawatts:
+{{- range .iotawatts }}
+  - {{ . -}}
+{{ end }} 
+update_interval: 5
+mqtt:
+  server: {{ .mqtt_server }}
+  username: {{ .mqtt_username }}
+  password: {{ .mqtt_password }}
