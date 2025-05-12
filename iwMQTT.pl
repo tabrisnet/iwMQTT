@@ -8,6 +8,7 @@ use Getopt::Long;
 use JSON::XS;
 use YAML::Tiny;
 use AnyEvent::HTTP;
+use Time::HiRes;
 
 BEGIN {
 	use Cwd qw( abs_path getcwd );
@@ -49,7 +50,7 @@ my $mqtt = AnyEvent::MQTT->new(
 	host => $configHash->{mqtt}->{server},
 	user_name => $configHash->{mqtt}->{username}, password => $configHash->{mqtt}->{password},
 	keep_alive_timer => 1,
-	on_error => sub { die "horribly" } );
+	on_error => sub { die "horribly", YAML::Tiny::Dump(\@_); } );
 $mqtt->connect() or die;
 # note we don't read MQTT messages, so no reason to subscribe
 
@@ -270,7 +271,7 @@ sub generateMQTT($$) {
 		}
 	}
 	if(exists($tree->{influx2}->{status}) && ($tree->{influx2}->{status} eq 'running')) {
-		my $influxBacklog = time() - $tree->{influx2}->{lastpost};
+		my $influxBacklog = CORE::time() - $tree->{influx2}->{lastpost};
 		$mqtt->publish( topic => "iotawatt/$IWname/influx2/backlog", message => $influxBacklog );
 	}
 
@@ -313,15 +314,21 @@ sub get_unit_config {
 
 sub __fetch_status {
 	my ($hostname, $body, $hdr) = @_;
+	$units{$hostname}{bodyTime} = Time::HiRes::time();
 	print "hi $hostname: $hdr->{Status}\n";
 	return unless $hdr->{Status} == 200; #hopefully errors are temporary
 	my $tree = $jsonCodec->decode($body);
 	#decorateTree($hostname, $tree);
 	generateMQTT($hostname, $tree);
+	my $currentTime = Time::HiRes::time();
+	my $processingTime = $currentTime - $units{$hostname}{bodyTime};
+	my $fetchTime = $units{$hostname}{bodyTime} - $units{$hostname}{startTime};
+	printf ("$hostname (processingTime: %.06f) (fetchTime: %.06f)\n", $processingTime, $fetchTime);
 }
 sub fetch_status {
 	my ($hostname) = @_;
 	my $URL = "http://$hostname/$baseURI";
+	$units{$hostname}{startTime} = Time::HiRes::time();
 	http_get $URL, on_body => sub { __fetch_status($hostname, @_) };
 }
 
