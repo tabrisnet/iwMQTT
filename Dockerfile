@@ -1,16 +1,14 @@
-ARG BUILD_FROM
+# Build arguments
+ARG BUILD_FROM BUILD_ARCH BUILD_DESCRIPTION BUILD_NAME BUILD_VERSION
+
 FROM $BUILD_FROM
+
 RUN apk add --no-cache --update perl-anyevent-http perl-module-pluggable perl-sub-name perl-yaml-tiny perl-json-xs
 
+COPY entrypoint.sh iotawatt_config.yaml.gtmpl config.yaml CPAN iwMQTT.pl /
 
 ADD entrypoint.sh /
 RUN chmod +x /entrypoint.sh
-
-# Build arguments
-ARG BUILD_ARCH
-ARG BUILD_DESCRIPTION
-ARG BUILD_NAME
-ARG BUILD_VERSION
 
 # Labels
 LABEL \
