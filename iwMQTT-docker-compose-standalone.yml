@@ -1,0 +1,22 @@
+version: '3.3'
+services:
+  iwmqtt:
+    image: iwqtt
+    container_name: iwMQTT
+    build:
+      context: .
+      args:
+        BUILD_FROM: "ghcr.io/home-assistant/aarch64-base:3.21"
+      dockerfile: Dockerfile-standalone
+    restart: always
+    tty: true
+    stop_signal: SIGINT
+    networks:
+      - iwMQTT
+    volumes:
+      - type: bind
+        target: /iotawatt_config.yaml
+        source: ./iotawatt_config.yaml
+networks:
+  iwMQTT:
+
