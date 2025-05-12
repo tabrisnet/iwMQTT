@@ -9,9 +9,6 @@ use JSON::XS;
 use YAML::Tiny;
 use AnyEvent::HTTP;
 
-our $configHash = YAML::Tiny->read('iotawatt_config.yaml');
-$configHash = $configHash->[0];
-
 BEGIN {
 	use Cwd qw( abs_path getcwd );
 	use File::Basename;
@@ -21,6 +18,9 @@ BEGIN {
 	);
 	require constant; import constant(\%constants);
 }
+
+our $configHash = YAML::Tiny->read(PREFIX . '/' . 'iotawatt_config.yaml');
+$configHash = $configHash->[0];
 
 our %units = map { $_ => {}  } @{$configHash->{iotawatts}};
 #our %units = map { $_ => {}  } qw( iwbsmt.tabris.net );
