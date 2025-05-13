@@ -22,3 +22,20 @@ perl-json-xs
 contains:
 AnyEvent::MQTT 1.212810 as of 2025Apr22
 Net::MQTT 1.163170 as of 2025Apr22
+
+Recommended to add to your HA config, if you have the InfluxDB integration.
+Why? Because most likely you are already using the InfluxDB uploader anyway, right?
+
+influxdb:
+  api_version: 2
+  exclude:
+    entity_globs:
+      # we don't need the Watts/PF/Amps/Hz b/c that's already in InfluxDB
+      # but the other statistics are potentially useful
+      - sensor.iotawatt_*_Amps
+      - sensor.iotawatt_*_Watts
+      - sensor.iotawatt_*_Pf
+      - sensor.iotawatt_*_hz
+      - sensor.iotawatt_*_Vrms
+      - sensor.iotawatt_*_influxdb2_last_update # backlog is a good stat tho
+      - sensor.iotawatt_*_current_time
