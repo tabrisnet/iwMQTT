@@ -10,6 +10,8 @@ COPY entrypoint.sh iotawatt_config.yaml.gtmpl config.yaml CPAN iwMQTT.pl /
 ADD entrypoint.sh /
 RUN chmod +x /entrypoint.sh
 
+USER nobody:nobody
+
 # Labels
 LABEL \
     io.hass.name="${BUILD_NAME}" \
