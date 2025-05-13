@@ -6,7 +6,7 @@ services:
     build:
       context: .
       args:
-        BUILD_FROM: "ghcr.io/home-assistant/aarch64-base:3.21"
+        BUILD_FROM: "alpine:3.21"
       dockerfile: Dockerfile-standalone
     restart: always
     tty: true
@@ -17,6 +17,7 @@ services:
       - type: bind
         target: /iotawatt_config.yaml
         source: ./iotawatt_config.yaml
+        read_only: true
 networks:
   iwMQTT:
 
