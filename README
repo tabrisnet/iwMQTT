@@ -1,7 +1,8 @@
 Perl IoTaWatt to MQTT bridge
 
 NOTE: As of 2025May01, the docker and homeassistant addon machinery is untested.
-But the base perl code does work [or at least, it works for me].
+NOTE 2025May13: docker machinery works with `iwMQTT-docker-compose-standalone.yml`
+Running on a Libre Le Potato running Armbian Debian 11
 
 package needs:
 Debian: libanyevent-http-perl
