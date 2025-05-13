@@ -9,5 +9,6 @@ if [ -f iotawatt_config.yaml ]; then
     exec perl iwMQTT.pl
 else
 # this is only useful for testing
+    echo "iotawatt_config.yaml is missing, sleeping for an hour"
     sleep 3600;
 fi
