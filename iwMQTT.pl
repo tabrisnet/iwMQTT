@@ -300,6 +300,13 @@ sub generateMQTT($$) {
 
 sub __get_unit_config {
 	my ($hostname, $body, $hdr) = @_;
+
+	unless ($hdr->{Status} == 200) { #hopefully errors are temporary
+		# retry this fetch until it works.
+		$units{$hostname}->{timer} = AnyEvent->timer( after => $updateInterval, cb => sub { get_unit_config($hostname) } );
+		return;
+	}
+
 	my $tree = $jsonCodec->decode($body);
 	$units{$hostname} = { config => $tree };
 	#print $jsonCodec->pretty->encode( $units{$hostname} );
@@ -332,9 +339,9 @@ sub fetch_status {
 	http_get $URL, on_body => sub { __fetch_status($hostname, @_) };
 }
 
-foreach my $key (keys %units) {
+foreach my $hostname (keys %units) {
 	# FIXME: re-fetch this periodically
-	get_unit_config($key);
+	get_unit_config($hostname);
 }
 
 $mainLoop->recv;
